@@ -80,14 +80,19 @@ rm -rf $work_dir
 mkdir -p $work_dir
 pushd $work_dir > /dev/null
 
-timeout $csim_timeout vitis_hls \
-  -f $checker_dir/tcl/csim.tcl \
-  ${target_clock_period_ns}ns \
-  "$submit_source_files" \
-  "cxxflags=$csim_cxxflags" \
-  "ldflags=$ldflags" \
-  $flow \
-  $tb > /dev/null
+cat << EOS > csim.tcl
+open_project -reset prj
+add_files -cflags "$csim_cxxflags" $submit_source_files
+add_files -cflags "$csim_cxxflags -DCSIM" -tb $tb
+set_top kernel
+open_solution -flow_target $flow solution
+set_part xcu200-fsgd2104-2-e
+create_clock -period ${target_clock_period_ns}ns -name default
+csim_design -O -ldflags "$ldflags"
+exit
+EOS
+
+timeout $csim_timeout vitis_hls -f csim.tcl > csim.log
 
 exit_code=$?
 
@@ -148,14 +153,18 @@ hls_fail=1
 hls_timeout=0
 hls_error=0
 
-timeout $hls_timeout vitis_hls \
-  -f $checker_dir/tcl/hls.tcl \
-  ${target_clock_period_ns}ns \
-  "$submit_source_files" \
-  "cxxflags=$hls_cxxflags" \
-  "ldflags=$ldflags" \
-  $flow \
-  $tb > /dev/null
+cat << EOS > hls.tcl
+open_project -reset prj
+add_files -cflags "$hls_cxxflags" $submit_source_files
+set_top kernel
+open_solution -flow_target $flow solution
+set_part xcu200-fsgd2104-2-e
+create_clock -period ${target_clock_period_ns}ns -name default
+csynth_design
+exit
+EOS
+
+timeout $hls_timeout vitis_hls -f hls.tcl > hls.log
 
 exit_code=$?
 
@@ -200,14 +209,15 @@ cosim_timeout=0
 cosim_error=0
 cosim_mismatch=0
 
-timeout $cosim_timeout vitis_hls \
-  -f $checker_dir/tcl/cosim.tcl \
-  ${target_clock_period_ns}ns \
-  "$submit_source_files" \
-  "cxxflags=$cosim_cxxflags" \
-  "ldflags=$ldflags" \
-  $flow \
-  $tb > /dev/null
+cat << EOS > cosim.tcl
+open_project prj
+add_files -cflags "$cosim_cxxflags -DCOSIM" -tb $tb
+open_solution -flow_target $flow solution
+cosim_design -ldflags "$ldflags" -random_stall
+exit
+EOS
+
+timeout $cosim_timeout vitis_hls -f cosim.tcl > cosim.log
 
 exit_code=$?
 
@@ -243,7 +253,18 @@ popd > /dev/null
 
 ######################################
 # Get QoR
-ruby $checker_dir/get_hls_qor.rb $work_dir/prj/solution/syn/report/csynth.xml >> $result
+ruby << EOS >> result.txt
+require 'rexml/document'
+
+doc = REXML::Document.new(File.new("$work_dir/prj/solution/syn/report/csynth.xml"))
+
+puts "ff=#{doc.elements['profile/AreaEstimates/Resources/FF'].text}"
+puts "lut=#{doc.elements['profile/AreaEstimates/Resources/LUT'].text}"
+puts "dsp=#{doc.elements['profile/AreaEstimates/Resources/DSP'].text}"
+puts "bram=#{doc.elements['profile/AreaEstimates/Resources/BRAM_18K'].text}"
+puts "uram=#{doc.elements['profile/AreaEstimates/Resources/URAM'].text}"
+puts "clock_period=#{doc.elements['profile/PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod'].text}"
+EOS
 
 eval $(grep clock_period $result)
 
