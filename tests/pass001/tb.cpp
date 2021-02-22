@@ -10,7 +10,9 @@ int main(int argc, char** argv)
 
   kernel(a, b, &c);
 
+#ifdef CSIM
   kernel(b, a, &c);
+#endif
 
   if (c != a+b) {
     exit(EXIT_FAILURE);

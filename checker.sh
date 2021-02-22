@@ -1,13 +1,12 @@
 # Usage
-if [ $# -ne 4 ] ; then
-  echo Error: The number of arguments should be 4!
-  echo usage: $0 REGULATION CSIM_TB COSIM_TB SUBMIT_DIR
+if [ $# -ne 3 ] ; then
+  echo Error: The number of arguments should be 3!
+  echo usage: $0 REGULATION TB SUBMIT_DIR
   exit 1
 fi
 
 regulation=$1; shift
-csim_tb=$1; shift
-cosim_tb=$1; shift
+tb=$1; shift
 submit_dir=$1; shift
 
 # Argument check
@@ -16,13 +15,8 @@ if [ ! -e $regulation ] ; then
   exit 1
 fi
 
-if [ ! -e $csim_tb ] ; then
-  echo "Error: Specified CSIM_TB file ($csim_tb) doesn't exist!"
-  exit 1
-fi
-
-if [ ! -e $cosim_tb ] ; then
-  echo "Error: Specified COSIM_TB file ($cosim_tb) doesn't exist!"
+if [ ! -e $tb ] ; then
+  echo "Error: Specified TB file ($tb) doesn't exist!"
   exit 1
 fi
 
@@ -32,8 +26,7 @@ if [ ! -e $submit_dir ] ; then
 fi
 
 # Absolute path
-csim_tb=$(readlink -f $csim_tb)
-cosim_tb=$(readlink -f $cosim_tb)
+tb=$(readlink -f $tb)
 regulation=$(readlink -f $regulation)
 submit_dir=$(readlink -f $submit_dir)
 
@@ -56,6 +49,7 @@ submit_source_files=$(ls $submit_dir/*.cpp)
 
 # Read regulation
 target_clock_period_ns=10
+flow=vivado
 vitis_version=2020.2
 csim_timeout=1m
 hls_timeout=5m
@@ -79,7 +73,7 @@ echo bytes: $bytes
 
 ######################################
 # Check csim
-csim_cxxflags="$cxxflags -I$submit_dir -I$(dirname $csim_tb)"
+csim_cxxflags="$cxxflags -I$submit_dir -I$(dirname $tb)"
 
 work_dir=$cur_dir/work_csim
 rm -rf $work_dir
@@ -92,7 +86,8 @@ timeout $csim_timeout vitis_hls \
   "$submit_source_files" \
   "cxxflags=$csim_cxxflags" \
   "ldflags=$ldflags" \
-  $csim_tb > /dev/null
+  $flow \
+  $tb > /dev/null
 
 exit_code=$?
 
@@ -159,7 +154,8 @@ timeout $hls_timeout vitis_hls \
   "$submit_source_files" \
   "cxxflags=$hls_cxxflags" \
   "ldflags=$ldflags" \
-  $cosim_tb > /dev/null
+  $flow \
+  $tb > /dev/null
 
 exit_code=$?
 
@@ -196,7 +192,7 @@ popd > /dev/null
 # Check cosim
 pushd $work_dir > /dev/null
 
-cosim_cxxflags="$cxxflags -I$submit_dir -I$(dirname $cosim_tb)"
+cosim_cxxflags="$cxxflags -I$submit_dir -I$(dirname $tb)"
 
 cosim_result=
 cosim_fail=1
@@ -210,7 +206,8 @@ timeout $cosim_timeout vitis_hls \
   "$submit_source_files" \
   "cxxflags=$cosim_cxxflags" \
   "ldflags=$ldflags" \
-  $cosim_tb > /dev/null
+  $flow \
+  $tb > /dev/null
 
 exit_code=$?
 
@@ -252,8 +249,10 @@ eval $(grep clock_period $result)
 
 ######################################
 # Get simulation time
-sim_start=$(grep -e '^// RTL Simulation .* \[0\.00%\]' $work_dir/vitis_hls.log | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
-sim_end=$(grep -e '^// RTL Simulation .* \[100\.00%\]' $work_dir/vitis_hls.log | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
+#sim_start=$(grep -e '^// RTL Simulation .* \[0\.00%\]' $work_dir/vitis_hls.log | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
+#sim_end=$(grep -e '^// RTL Simulation .* \[100\.00%\]' $work_dir/vitis_hls.log | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
+sim_start=$(grep -e '^// RTL Simulation .* @ "[0-9]*"' $work_dir/vitis_hls.log | head -n 1 | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
+sim_end=$(grep -e '^// RTL Simulation .* @ "[0-9]*"' $work_dir/vitis_hls.log | tail -n 1 | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
 
 sim_time=$(echo "($sim_end-$sim_start)/1000" | bc)
 sim_cycle=$(echo $sim_time/$target_clock_period_ns | bc)
