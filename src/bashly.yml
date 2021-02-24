@@ -1,0 +1,28 @@
+name: vhls-check
+help: Vitis HLS checker
+version: 0.1.0
+
+args:
+- name: source_dir
+  default: .
+  help: "Target source directory (default: .)"
+
+flags:
+- long: --output
+  short: -o
+  arg: output
+  help: Output summary to the specified file
+
+- long: --work-dir
+  short: -w
+  arg: work_dir
+  default: work
+  help: "Working directory (default: ./work)"
+
+- long: --docker
+  short: -d
+  help: Run in docker container environment
+
+- long: --force
+  short: -f
+  help: Force output even if files or directories already exist
