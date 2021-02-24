@@ -43,7 +43,8 @@ if [[ $docker ]] ; then
   tag=latest
 
   # Build docker
-  docker build -t $repo:$tag $self_dir
+  #docker build -t $repo:$tag $self_dir
+  build_docker_image -t $repo:$tag
 
   # Run docker
   run_opts=

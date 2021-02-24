@@ -4,8 +4,8 @@ version: 0.1.0
 
 args:
 - name: source_dir
-  default: .
-  help: "Target source directory (default: .)"
+  default: ./
+  help: Target source directory
 
 flags:
 - long: --output
@@ -16,8 +16,8 @@ flags:
 - long: --work-dir
   short: -w
   arg: work_dir
-  default: work
-  help: "Working directory (default: ./work)"
+  default: ./work
+  help: Working directory
 
 - long: --docker
   short: -d

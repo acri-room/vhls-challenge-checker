@@ -50,7 +50,8 @@ root_command() {
     tag=latest
   
     # Build docker
-    docker build -t $repo:$tag $self_dir
+    #docker build -t $repo:$tag $self_dir
+    build_docker_image -t $repo:$tag
   
     # Run docker
     run_opts=
@@ -164,8 +165,8 @@ vhls_check_usage() {
     
     # :flag.usage
     echo "  --work-dir, -w WORK_DIR"
-    printf "    Working directory (default: ./work)\n"
-    printf "    Default: work\n"
+    printf "    Working directory\n"
+    printf "    Default: ./work\n"
     echo
     
     # :flag.usage
@@ -182,8 +183,8 @@ vhls_check_usage() {
     
     # :argument.usage
     echo "  SOURCE_DIR"
-    printf "    Target source directory (default: .)\n"
-    printf "    Default: .\n"
+    printf "    Target source directory\n"
+    printf "    Default: ./\n"
     echo
 
   fi
@@ -265,6 +266,54 @@ yellow_underlined() { printf "\e[4;33m%b\e[0m\n" "$*"; }
 blue_underlined() { printf "\e[4;34m%b\e[0m\n" "$*"; }
 magenta_underlined() { printf "\e[4;35m%b\e[0m\n" "$*"; }
 cyan_underlined() { printf "\e[4;36m%b\e[0m\n" "$*"; }
+
+# :src/lib/docker.sh
+build_docker_image() {
+  local dockerfile=$(mktemp)
+  cat << 'EOS' > $dockerfile
+FROM ubuntu:18.04
+
+SHELL ["/bin/bash", "-c"]
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Timezone
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Install packages
+RUN apt-get update -y && apt-get install -y \
+      build-essential \
+      bzip2 \
+      libc6-i386 \
+      git \
+      libfontconfig1 \
+      libglib2.0-0 \
+      sudo \
+      nano \
+      locales \
+      libxext6 \
+      libxrender1 \
+      libxtst6 \
+      libgtk2.0-0 \
+      build-essential \
+      unzip \
+      ruby \
+      ruby-dev \
+      pkg-config \
+      libprotobuf-dev \
+      protobuf-compiler \
+      python-protobuf \
+      python-pip \
+      bc \
+      && apt autoclean -y \
+      && apt autoremove -y \
+      && rm -rf /var/lib/apt/lists/*
+EOS
+
+  docker build $* -f $dockerfile .
+  rm $dockerfile
+}
 
 # :src/lib/get_result.sh
 ######################################
@@ -596,8 +645,8 @@ parse_requirements() {
     esac
   done
   # :command.default_assignments
-  [[ -n ${args[source_dir]} ]] || args[source_dir]="."
-  [[ -n ${args[--work-dir]} ]] || args[--work-dir]="work"
+  [[ -n ${args[source_dir]} ]] || args[source_dir]="./"
+  [[ -n ${args[--work-dir]} ]] || args[--work-dir]="./work"
 }
 
 # :command.initialize

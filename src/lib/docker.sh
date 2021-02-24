@@ -1,3 +1,6 @@
+build_docker_image() {
+  local dockerfile=$(mktemp)
+  cat << 'EOS' > $dockerfile
 FROM ubuntu:18.04
 
 SHELL ["/bin/bash", "-c"]
@@ -36,3 +39,8 @@ RUN apt-get update -y && apt-get install -y \
       && apt autoclean -y \
       && apt autoremove -y \
       && rm -rf /var/lib/apt/lists/*
+EOS
+
+  docker build $* -f $dockerfile .
+  rm $dockerfile
+}
