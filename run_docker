@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -eux
+
+repo=acri-challenge-server
+tag=latest
+
+checker_dir=$(readlink -f $(dirname $0))
+code_dir=$(readlink -f $1)
+
+docker build -t $repo:$tag .
+
+docker run \
+  -v /tools:/tools:ro \
+  -v $checker_dir/checker.sh:/tmp/checker.sh:ro \
+  -v $code_dir:/tmp/code:ro \
+  --cpus=1 \
+  --memory 4g \
+  $repo:$tag \
+  /bin/bash /tmp/checker.sh /tmp/code/regulation.txt /tmp/code/tb.cpp /tmp/code/submit
+
