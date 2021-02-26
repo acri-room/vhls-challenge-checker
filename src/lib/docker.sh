@@ -36,6 +36,7 @@ RUN apt-get update -y && apt-get install -y \
       python-protobuf \
       python-pip \
       bc \
+      time \
       && apt autoclean -y \
       && apt autoremove -y \
       && rm -rf /var/lib/apt/lists/*

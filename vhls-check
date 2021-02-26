@@ -7,6 +7,8 @@ root_command() {
   # :src/root_command.sh
   #inspect_args
   
+  #set -x
+  
   # Get arguments and flags
   source_dir=${args[source_dir]}
   output=${args[--output]}
@@ -102,11 +104,12 @@ root_command() {
   
   # Load regulation
   target_clock_period_ns=10
-  flow=vivado
+  flow=vitis
   vitis_version=2020.2
   csim_timeout=1m
   hls_timeout=5m
   cosim_timeout=5m
+  syn_timeout=10m
   cxxflags=
   ldflags=
   
@@ -123,6 +126,7 @@ root_command() {
   check_csim
   check_hls
   check_cosim
+  check_syn
   get_qor
   get_sim_time
 }
@@ -306,6 +310,7 @@ RUN apt-get update -y && apt-get install -y \
       python-protobuf \
       python-pip \
       bc \
+      time \
       && apt autoclean -y \
       && apt autoremove -y \
       && rm -rf /var/lib/apt/lists/*
@@ -321,17 +326,30 @@ EOS
 ######################################
 get_qor() {
 
+#  ruby << EOS >> $work_dir/qor.txt
+#require 'rexml/document'
+#
+#doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/syn/report/csynth.xml"))
+#
+#puts "ff=#{doc.elements['profile/AreaEstimates/Resources/FF'].text}"
+#puts "lut=#{doc.elements['profile/AreaEstimates/Resources/LUT'].text}"
+#puts "dsp=#{doc.elements['profile/AreaEstimates/Resources/DSP'].text}"
+#puts "bram=#{doc.elements['profile/AreaEstimates/Resources/BRAM_18K'].text}"
+#puts "uram=#{doc.elements['profile/AreaEstimates/Resources/URAM'].text}"
+#puts "clock_period=#{doc.elements['profile/PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod'].text}"
+#EOS
+
   ruby << EOS >> $work_dir/qor.txt
 require 'rexml/document'
 
-doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/syn/report/csynth.xml"))
+doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/impl/report/verilog/kernel_export.xml"))
 
-puts "ff=#{doc.elements['profile/AreaEstimates/Resources/FF'].text}"
-puts "lut=#{doc.elements['profile/AreaEstimates/Resources/LUT'].text}"
-puts "dsp=#{doc.elements['profile/AreaEstimates/Resources/DSP'].text}"
-puts "bram=#{doc.elements['profile/AreaEstimates/Resources/BRAM_18K'].text}"
-puts "uram=#{doc.elements['profile/AreaEstimates/Resources/URAM'].text}"
-puts "clock_period=#{doc.elements['profile/PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod'].text}"
+puts "ff=#{doc.elements['profile/AreaReport/Resources/FF'].text}"
+puts "lut=#{doc.elements['profile/AreaReport/Resources/LUT'].text}"
+puts "dsp=#{doc.elements['profile/AreaReport/Resources/DSP'].text}"
+puts "bram=#{doc.elements['profile/AreaReport/Resources/BRAM'].text}"
+puts "uram=#{doc.elements['profile/AreaReport/Resources/URAM'].text}"
+puts "clock_period=#{doc.elements['profile/TimingReport/AchievedClockPeriod'].text}"
 EOS
 
   #eval $(grep clock_period $work_dir/qor.txt)
@@ -381,7 +399,7 @@ check_csim() {
   local csim_cxxflags="$cxxflags -I$source_dir"
   local csim_result=
   local csim_fail=1
-  local csim_timeout=0
+  local csim_timeout_error=0
   local csim_compile_error=0
   local csim_runtime_error=0
   local csim_error=0
@@ -400,12 +418,12 @@ exit
 EOS
   
   set +e
-  timeout $csim_timeout vitis_hls -f csim.tcl > csim.log
+  timeout $csim_timeout time vitis_hls -f csim.tcl &> csim.log
   local exit_code=$?
   set -e
   
   if [ $exit_code -eq 124 ] ; then
-    csim_timeout=1
+    csim_timeout_error=1
     csim_result="Timeout ($csim_timeout)"
   elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "compilation error" > /dev/null ; then
     csim_compile_error=1
@@ -425,7 +443,7 @@ EOS
   fi
   
   output_summary csim_fail=$csim_fail
-  output_summary csim_timeout=$csim_timeout
+  output_summary csim_timeout=$csim_timeout_error
   output_summary csim_compile_error=$csim_compile_error
   output_summary csim_runtime_error=$csim_runtime_error
   output_summary csim_error=$csim_error
@@ -436,6 +454,50 @@ EOS
     exit
   else
     print_pass "CSim: " $csim_result
+  fi
+  
+  popd > /dev/null
+}
+
+# :src/lib/syn_checker.sh
+######################################
+# Check syn
+######################################
+
+check_syn() {
+  pushd $work_dir > /dev/null
+  
+  local syn_fail=1
+  local syn_timeout_error=0
+  
+  cat << EOS > syn.tcl
+open_project prj_hls_cosim
+open_solution -flow_target $flow solution
+export_design -flow syn -rtl verilog -format ip_catalog
+exit
+EOS
+  
+  set +e
+  timeout $syn_timeout time vitis_hls -f syn.tcl &> syn.log
+  exit_code=$?
+  set -e
+  
+  if [ $exit_code -eq 124 ] ; then
+    syn_timeout_error=1
+    syn_result="Timeout ($syn_timeout)"
+  else
+    syn_fail=0
+    syn_result=Pass
+  fi
+  
+  output_summary syn_fail=$syn_fail
+  output_summary syn_timeout=$syn_timeout_error
+  
+  if [ $syn_fail -ne 0 ] ; then
+    print_fail "Syn: " $syn_result
+    exit
+  else
+    print_pass "Syn: " $syn_result
   fi
   
   popd > /dev/null
@@ -452,7 +514,7 @@ check_cosim() {
   local cosim_cxxflags="$cxxflags -I$source_dir"
   local cosim_result=
   local cosim_fail=1
-  local cosim_timeout=0
+  local cosim_timeout_error=0
   local cosim_error=0
   local cosim_mismatch=0
   
@@ -464,12 +526,13 @@ cosim_design -ldflags "$ldflags" -random_stall
 exit
 EOS
   
-  timeout $cosim_timeout vitis_hls -f cosim.tcl > cosim.log
-  
+  set +e
+  timeout $cosim_timeout time vitis_hls -f cosim.tcl &> cosim.log
   exit_code=$?
+  set -e
   
   if [ $exit_code -eq 124 ] ; then
-    cosim_timeout=1
+    cosim_timeout_error=1
     cosim_result="Timeout ($cosim_timeout)"
   elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "nonzero return value" > /dev/null ; then
     cosim_mismatch=1
@@ -486,7 +549,7 @@ EOS
   fi
   
   output_summary cosim_fail=$cosim_fail
-  output_summary cosim_timeout=$cosim_timeout
+  output_summary cosim_timeout=$cosim_timeout_error
   output_summary cosim_error=$cosim_error
   output_summary cosim_mismatch=$cosim_mismatch
   
@@ -511,7 +574,7 @@ check_hls() {
   local hls_cxxflags="$cxxflags -I$source_dir"
   local hls_result=
   local hls_fail=1
-  local hls_timeout=0
+  local hls_timeout_error=0
   local hls_error=0
   
   cat << EOS > hls.tcl
@@ -526,12 +589,12 @@ exit
 EOS
   
   set +e
-  timeout $hls_timeout vitis_hls -f hls.tcl > hls.log
+  timeout $hls_timeout time vitis_hls -f hls.tcl &> hls.log
   exit_code=$?
   set -e
   
   if [ $exit_code -eq 124 ] ; then
-    hls_timeout=1
+    hls_timeout_error=1
     hls_result="Timeout ($hls_timeout)"
   elif grep -e "^ERROR:" $work_dir/vitis_hls.log > /dev/null ; then
     hls_error=1
@@ -548,7 +611,7 @@ EOS
   fi
   
   output_summary hls_fail=$hls_fail
-  output_summary hls_timeout=$hls_timeout
+  output_summary hls_timeout=$hls_timeout_error
   output_summary hls_error=$hls_error
   
   if [ $hls_fail -ne 0 ] ; then

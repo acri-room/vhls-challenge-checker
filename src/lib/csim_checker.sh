@@ -8,7 +8,7 @@ check_csim() {
   local csim_cxxflags="$cxxflags -I$source_dir"
   local csim_result=
   local csim_fail=1
-  local csim_timeout=0
+  local csim_timeout_error=0
   local csim_compile_error=0
   local csim_runtime_error=0
   local csim_error=0
@@ -27,12 +27,12 @@ exit
 EOS
   
   set +e
-  timeout $csim_timeout vitis_hls -f csim.tcl > csim.log
+  timeout $csim_timeout time vitis_hls -f csim.tcl &> csim.log
   local exit_code=$?
   set -e
   
   if [ $exit_code -eq 124 ] ; then
-    csim_timeout=1
+    csim_timeout_error=1
     csim_result="Timeout ($csim_timeout)"
   elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "compilation error" > /dev/null ; then
     csim_compile_error=1
@@ -52,7 +52,7 @@ EOS
   fi
   
   output_summary csim_fail=$csim_fail
-  output_summary csim_timeout=$csim_timeout
+  output_summary csim_timeout=$csim_timeout_error
   output_summary csim_compile_error=$csim_compile_error
   output_summary csim_runtime_error=$csim_runtime_error
   output_summary csim_error=$csim_error

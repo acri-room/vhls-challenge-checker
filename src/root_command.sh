@@ -1,5 +1,7 @@
 #inspect_args
 
+#set -x
+
 # Get arguments and flags
 source_dir=${args[source_dir]}
 output=${args[--output]}
@@ -95,11 +97,12 @@ fi
 
 # Load regulation
 target_clock_period_ns=10
-flow=vivado
+flow=vitis
 vitis_version=2020.2
 csim_timeout=1m
 hls_timeout=5m
 cosim_timeout=5m
+syn_timeout=10m
 cxxflags=
 ldflags=
 
@@ -116,5 +119,6 @@ check_bytes
 check_csim
 check_hls
 check_cosim
+check_syn
 get_qor
 get_sim_time

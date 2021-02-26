@@ -8,7 +8,7 @@ check_cosim() {
   local cosim_cxxflags="$cxxflags -I$source_dir"
   local cosim_result=
   local cosim_fail=1
-  local cosim_timeout=0
+  local cosim_timeout_error=0
   local cosim_error=0
   local cosim_mismatch=0
   
@@ -20,12 +20,13 @@ cosim_design -ldflags "$ldflags" -random_stall
 exit
 EOS
   
-  timeout $cosim_timeout vitis_hls -f cosim.tcl > cosim.log
-  
+  set +e
+  timeout $cosim_timeout time vitis_hls -f cosim.tcl &> cosim.log
   exit_code=$?
+  set -e
   
   if [ $exit_code -eq 124 ] ; then
-    cosim_timeout=1
+    cosim_timeout_error=1
     cosim_result="Timeout ($cosim_timeout)"
   elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "nonzero return value" > /dev/null ; then
     cosim_mismatch=1
@@ -42,7 +43,7 @@ EOS
   fi
   
   output_summary cosim_fail=$cosim_fail
-  output_summary cosim_timeout=$cosim_timeout
+  output_summary cosim_timeout=$cosim_timeout_error
   output_summary cosim_error=$cosim_error
   output_summary cosim_mismatch=$cosim_mismatch
   

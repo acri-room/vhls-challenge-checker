@@ -8,7 +8,7 @@ check_hls() {
   local hls_cxxflags="$cxxflags -I$source_dir"
   local hls_result=
   local hls_fail=1
-  local hls_timeout=0
+  local hls_timeout_error=0
   local hls_error=0
   
   cat << EOS > hls.tcl
@@ -23,12 +23,12 @@ exit
 EOS
   
   set +e
-  timeout $hls_timeout vitis_hls -f hls.tcl > hls.log
+  timeout $hls_timeout time vitis_hls -f hls.tcl &> hls.log
   exit_code=$?
   set -e
   
   if [ $exit_code -eq 124 ] ; then
-    hls_timeout=1
+    hls_timeout_error=1
     hls_result="Timeout ($hls_timeout)"
   elif grep -e "^ERROR:" $work_dir/vitis_hls.log > /dev/null ; then
     hls_error=1
@@ -45,7 +45,7 @@ EOS
   fi
   
   output_summary hls_fail=$hls_fail
-  output_summary hls_timeout=$hls_timeout
+  output_summary hls_timeout=$hls_timeout_error
   output_summary hls_error=$hls_error
   
   if [ $hls_fail -ne 0 ] ; then
