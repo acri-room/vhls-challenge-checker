@@ -19,9 +19,9 @@ open_solution -flow_target $flow solution
 cosim_design -ldflags "$ldflags" -random_stall
 exit
 EOS
-  
+
   set +e
-  timeout $cosim_timeout time vitis_hls -f cosim.tcl &> cosim.log
+  timeout $cosim_timeout time vitis_hls -f cosim.tcl |& tee cosim.log > $logout
   exit_code=$?
   set -e
   

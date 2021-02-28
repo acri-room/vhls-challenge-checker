@@ -19,6 +19,14 @@ flags:
   default: ./work
   help: Working directory
 
+- long: --synthesis
+  short: -s
+  help: Run synthesis for resource/timing estimation
+
+- long: --verbose
+  short: -v
+  help: Verbose log output
+
 - long: --docker
   short: -d
   help: Run in docker container environment

@@ -23,7 +23,7 @@ exit
 EOS
   
   set +e
-  timeout $hls_timeout time vitis_hls -f hls.tcl &> hls.log
+  timeout $hls_timeout time vitis_hls -f hls.tcl |& tee hls.log > $logout
   exit_code=$?
   set -e
   

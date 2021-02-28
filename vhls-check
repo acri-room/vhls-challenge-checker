@@ -13,6 +13,8 @@ root_command() {
   source_dir=${args[source_dir]}
   output=${args[--output]}
   work_dir=${args[--work-dir]}
+  synthesis=${args[--synthesis]}
+  verbose=${args[--verbose]}
   docker=${args[--docker]}
   force=${args[--force]}
   
@@ -24,6 +26,11 @@ root_command() {
   self=$(readlink -f $BASH_SOURCE)
   self_base=$(basename $self)
   self_dir=$(dirname $self)
+  
+  logout=/dev/null
+  if [[ $verbose ]] ; then
+    logout=/dev/stdout
+  fi
   
   # Argument check
   if [[ ! -e $source_dir ]] ; then
@@ -126,7 +133,11 @@ root_command() {
   check_csim
   check_hls
   check_cosim
-  check_syn
+  
+  if [[ $synthesis ]] ; then
+    check_syn
+  fi
+  
   get_qor
   get_sim_time
 }
@@ -149,7 +160,7 @@ vhls_check_usage() {
   printf "Usage:\n"
   printf "  vhls-check [SOURCE_DIR] [options]\n"
   printf "  vhls-check --help | -h\n"
-  printf "  vhls-check --version | -v\n"
+  printf "  vhls-check --version\n"
   echo
 
   if [[ -n $long_usage ]]; then
@@ -158,7 +169,7 @@ vhls_check_usage() {
     echo "  --help, -h"
     printf "    Show this help\n"
     echo
-    echo "  --version, -v"
+    echo "  --version"
     printf "    Show version number\n"
     echo
     # :command.usage_flags
@@ -171,6 +182,16 @@ vhls_check_usage() {
     echo "  --work-dir, -w WORK_DIR"
     printf "    Working directory\n"
     printf "    Default: ./work\n"
+    echo
+    
+    # :flag.usage
+    echo "  --synthesis, -s"
+    printf "    Run synthesis for resource/timing estimation\n"
+    echo
+    
+    # :flag.usage
+    echo "  --verbose, -v"
+    printf "    Verbose log output\n"
     echo
     
     # :flag.usage
@@ -326,20 +347,9 @@ EOS
 ######################################
 get_qor() {
 
-#  ruby << EOS >> $work_dir/qor.txt
-#require 'rexml/document'
-#
-#doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/syn/report/csynth.xml"))
-#
-#puts "ff=#{doc.elements['profile/AreaEstimates/Resources/FF'].text}"
-#puts "lut=#{doc.elements['profile/AreaEstimates/Resources/LUT'].text}"
-#puts "dsp=#{doc.elements['profile/AreaEstimates/Resources/DSP'].text}"
-#puts "bram=#{doc.elements['profile/AreaEstimates/Resources/BRAM_18K'].text}"
-#puts "uram=#{doc.elements['profile/AreaEstimates/Resources/URAM'].text}"
-#puts "clock_period=#{doc.elements['profile/PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod'].text}"
-#EOS
-
-  ruby << EOS >> $work_dir/qor.txt
+  if [[ $synthesis ]] ; then
+    # Get resource/timing estimation from synthesis report
+    ruby << EOS >> $work_dir/qor.txt
 require 'rexml/document'
 
 doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/impl/report/verilog/kernel_export.xml"))
@@ -351,6 +361,23 @@ puts "bram=#{doc.elements['profile/AreaReport/Resources/BRAM'].text}"
 puts "uram=#{doc.elements['profile/AreaReport/Resources/URAM'].text}"
 puts "clock_period=#{doc.elements['profile/TimingReport/AchievedClockPeriod'].text}"
 EOS
+
+  else
+    # Get resource/timing estimation from hls report
+    ruby << EOS >> $work_dir/qor.txt
+require 'rexml/document'
+
+doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/syn/report/csynth.xml"))
+
+puts "ff=#{doc.elements['profile/AreaEstimates/Resources/FF'].text}"
+puts "lut=#{doc.elements['profile/AreaEstimates/Resources/LUT'].text}"
+puts "dsp=#{doc.elements['profile/AreaEstimates/Resources/DSP'].text}"
+puts "bram=#{doc.elements['profile/AreaEstimates/Resources/BRAM_18K'].text}"
+puts "uram=#{doc.elements['profile/AreaEstimates/Resources/URAM'].text}"
+puts "clock_period=#{doc.elements['profile/PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod'].text}"
+EOS
+
+  fi
 
   #eval $(grep clock_period $work_dir/qor.txt)
   eval $(cat $work_dir/qor.txt)
@@ -418,7 +445,7 @@ exit
 EOS
   
   set +e
-  timeout $csim_timeout time vitis_hls -f csim.tcl &> csim.log
+  timeout $csim_timeout time vitis_hls -f csim.tcl |& tee csim.log > $logout
   local exit_code=$?
   set -e
   
@@ -478,7 +505,7 @@ exit
 EOS
   
   set +e
-  timeout $syn_timeout time vitis_hls -f syn.tcl &> syn.log
+  timeout $syn_timeout time vitis_hls -f syn.tcl |& tee syn.log > $logout
   exit_code=$?
   set -e
   
@@ -525,9 +552,9 @@ open_solution -flow_target $flow solution
 cosim_design -ldflags "$ldflags" -random_stall
 exit
 EOS
-  
+
   set +e
-  timeout $cosim_timeout time vitis_hls -f cosim.tcl &> cosim.log
+  timeout $cosim_timeout time vitis_hls -f cosim.tcl |& tee cosim.log > $logout
   exit_code=$?
   set -e
   
@@ -589,7 +616,7 @@ exit
 EOS
   
   set +e
-  timeout $hls_timeout time vitis_hls -f hls.tcl &> hls.log
+  timeout $hls_timeout time vitis_hls -f hls.tcl |& tee hls.log > $logout
   exit_code=$?
   set -e
   
@@ -630,7 +657,7 @@ EOS
 parse_requirements() {
   # :command.fixed_flag_filter
   case "$1" in
-  --version | -v )
+  --version )
     version_command
     exit
     ;;
@@ -674,6 +701,18 @@ parse_requirements() {
         printf "%s\n" "--work-dir requires an argument: --work-dir, -w WORK_DIR"
         exit 1
       fi
+      ;;
+  
+    # :flag.case
+    --synthesis | -s )
+      args[--synthesis]=1
+      shift
+      ;;
+  
+    # :flag.case
+    --verbose | -v )
+      args[--verbose]=1
+      shift
       ;;
   
     # :flag.case

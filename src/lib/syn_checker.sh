@@ -16,7 +16,7 @@ exit
 EOS
   
   set +e
-  timeout $syn_timeout time vitis_hls -f syn.tcl &> syn.log
+  timeout $syn_timeout time vitis_hls -f syn.tcl |& tee syn.log > $logout
   exit_code=$?
   set -e
   

@@ -27,7 +27,7 @@ exit
 EOS
   
   set +e
-  timeout $csim_timeout time vitis_hls -f csim.tcl &> csim.log
+  timeout $csim_timeout time vitis_hls -f csim.tcl |& tee csim.log > $logout
   local exit_code=$?
   set -e
   

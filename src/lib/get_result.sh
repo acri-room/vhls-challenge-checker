@@ -3,20 +3,9 @@
 ######################################
 get_qor() {
 
-#  ruby << EOS >> $work_dir/qor.txt
-#require 'rexml/document'
-#
-#doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/syn/report/csynth.xml"))
-#
-#puts "ff=#{doc.elements['profile/AreaEstimates/Resources/FF'].text}"
-#puts "lut=#{doc.elements['profile/AreaEstimates/Resources/LUT'].text}"
-#puts "dsp=#{doc.elements['profile/AreaEstimates/Resources/DSP'].text}"
-#puts "bram=#{doc.elements['profile/AreaEstimates/Resources/BRAM_18K'].text}"
-#puts "uram=#{doc.elements['profile/AreaEstimates/Resources/URAM'].text}"
-#puts "clock_period=#{doc.elements['profile/PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod'].text}"
-#EOS
-
-  ruby << EOS >> $work_dir/qor.txt
+  if [[ $synthesis ]] ; then
+    # Get resource/timing estimation from synthesis report
+    ruby << EOS >> $work_dir/qor.txt
 require 'rexml/document'
 
 doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/impl/report/verilog/kernel_export.xml"))
@@ -28,6 +17,23 @@ puts "bram=#{doc.elements['profile/AreaReport/Resources/BRAM'].text}"
 puts "uram=#{doc.elements['profile/AreaReport/Resources/URAM'].text}"
 puts "clock_period=#{doc.elements['profile/TimingReport/AchievedClockPeriod'].text}"
 EOS
+
+  else
+    # Get resource/timing estimation from hls report
+    ruby << EOS >> $work_dir/qor.txt
+require 'rexml/document'
+
+doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/syn/report/csynth.xml"))
+
+puts "ff=#{doc.elements['profile/AreaEstimates/Resources/FF'].text}"
+puts "lut=#{doc.elements['profile/AreaEstimates/Resources/LUT'].text}"
+puts "dsp=#{doc.elements['profile/AreaEstimates/Resources/DSP'].text}"
+puts "bram=#{doc.elements['profile/AreaEstimates/Resources/BRAM_18K'].text}"
+puts "uram=#{doc.elements['profile/AreaEstimates/Resources/URAM'].text}"
+puts "clock_period=#{doc.elements['profile/PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod'].text}"
+EOS
+
+  fi
 
   #eval $(grep clock_period $work_dir/qor.txt)
   eval $(cat $work_dir/qor.txt)

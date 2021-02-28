@@ -6,6 +6,8 @@
 source_dir=${args[source_dir]}
 output=${args[--output]}
 work_dir=${args[--work-dir]}
+synthesis=${args[--synthesis]}
+verbose=${args[--verbose]}
 docker=${args[--docker]}
 force=${args[--force]}
 
@@ -17,6 +19,11 @@ work_dir=$(readlink -f $work_dir)
 self=$(readlink -f $BASH_SOURCE)
 self_base=$(basename $self)
 self_dir=$(dirname $self)
+
+logout=/dev/null
+if [[ $verbose ]] ; then
+  logout=/dev/stdout
+fi
 
 # Argument check
 if [[ ! -e $source_dir ]] ; then
@@ -119,6 +126,10 @@ check_bytes
 check_csim
 check_hls
 check_cosim
-check_syn
+
+if [[ $synthesis ]] ; then
+  check_syn
+fi
+
 get_qor
 get_sim_time
