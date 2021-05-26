@@ -10,6 +10,9 @@ synthesis=${args[--synthesis]}
 verbose=${args[--verbose]}
 docker=${args[--docker]}
 force=${args[--force]}
+log_dir=${args[--log-dir]}
+log_limit=${args[--log-limit]}
+progress=${args[--progress]}
 
 set -ue
 
@@ -41,6 +44,10 @@ if [[ $output ]] ; then
   fi
 fi
 
+if [[ $log_dir ]] ; then
+  log_dir=$(readlink -f $log_dir)
+fi
+
 if [[ ! $force ]] && [[ -e $work_dir ]] ; then
   red_bold Error: "Working directory '$work_dir' already exists!"
   exit 1
@@ -59,10 +66,26 @@ if [[ $docker ]] ; then
   run_opts=
   if [[ $output ]] ; then
     touch $output
-    run_opts="-v $output:/tmp/output.txt:rw"
+    run_opts="$run_opts -v $output:/tmp/output.txt:rw"
+  fi
+  if [[ $log_dir ]] ; then
+    mkdir $log_dir
+    run_opts="$run_opts -v $log_dir:/tmp/log:rw"
+  fi
+
+  cmd_opts=
+  if [[ $synthesis ]] ; then
+    cmd_opts="$cmd_opts --synthesis"
+  fi
+  if [[ $log_limit ]] ; then
+    cmd_opts="$cmd_opts --log-limit $log_limit"
+  fi
+  if [[ $progress ]] ; then
+    cmd_opts="$cmd_opts --progress"
   fi
 
   docker run \
+    --rm \
     -v /tools/Xilinx:/tools/Xilinx:ro \
     -v $self:/tmp/$self_base:ro \
     -v $source_dir:/tmp/source:ro \
@@ -70,7 +93,7 @@ if [[ $docker ]] ; then
     --memory 4g \
     $run_opts \
     $repo:$tag \
-    /tmp/$self_base --force --output /tmp/output.txt /tmp/source
+    /tmp/$self_base --force --output /tmp/output.txt --log-dir /tmp/log $cmd_opts /tmp/source
   
   exit
 fi

@@ -3,6 +3,8 @@
 ######################################
 
 check_syn() {
+  print_progress syn
+
   pushd $work_dir > /dev/null
   
   local syn_fail=1
@@ -30,6 +32,8 @@ EOS
   
   output_summary syn_fail=$syn_fail
   output_summary syn_timeout=$syn_timeout_error
+
+  #copy_log syn.log
   
   if [ $syn_fail -ne 0 ] ; then
     print_fail "Syn: " $syn_result

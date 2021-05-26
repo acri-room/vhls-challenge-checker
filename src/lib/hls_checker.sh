@@ -3,6 +3,8 @@
 ######################################
 
 check_hls() {
+  print_progress hls
+
   pushd $work_dir > /dev/null
   
   local hls_cxxflags="$cxxflags -I$source_dir"
@@ -47,6 +49,8 @@ EOS
   output_summary hls_fail=$hls_fail
   output_summary hls_timeout=$hls_timeout_error
   output_summary hls_error=$hls_error
+
+  copy_log hls.log
   
   if [ $hls_fail -ne 0 ] ; then
     print_fail "HLS: " $hls_result

@@ -17,6 +17,9 @@ root_command() {
   verbose=${args[--verbose]}
   docker=${args[--docker]}
   force=${args[--force]}
+  log_dir=${args[--log-dir]}
+  log_limit=${args[--log-limit]}
+  progress=${args[--progress]}
   
   set -ue
   
@@ -48,6 +51,10 @@ root_command() {
     fi
   fi
   
+  if [[ $log_dir ]] ; then
+    log_dir=$(readlink -f $log_dir)
+  fi
+  
   if [[ ! $force ]] && [[ -e $work_dir ]] ; then
     red_bold Error: "Working directory '$work_dir' already exists!"
     exit 1
@@ -66,10 +73,26 @@ root_command() {
     run_opts=
     if [[ $output ]] ; then
       touch $output
-      run_opts="-v $output:/tmp/output.txt:rw"
+      run_opts="$run_opts -v $output:/tmp/output.txt:rw"
+    fi
+    if [[ $log_dir ]] ; then
+      mkdir $log_dir
+      run_opts="$run_opts -v $log_dir:/tmp/log:rw"
+    fi
+  
+    cmd_opts=
+    if [[ $synthesis ]] ; then
+      cmd_opts="$cmd_opts --synthesis"
+    fi
+    if [[ $log_limit ]] ; then
+      cmd_opts="$cmd_opts --log-limit $log_limit"
+    fi
+    if [[ $progress ]] ; then
+      cmd_opts="$cmd_opts --progress"
     fi
   
     docker run \
+      --rm \
       -v /tools/Xilinx:/tools/Xilinx:ro \
       -v $self:/tmp/$self_base:ro \
       -v $source_dir:/tmp/source:ro \
@@ -77,7 +100,7 @@ root_command() {
       --memory 4g \
       $run_opts \
       $repo:$tag \
-      /tmp/$self_base --force --output /tmp/output.txt /tmp/source
+      /tmp/$self_base --force --output /tmp/output.txt --log-dir /tmp/log $cmd_opts /tmp/source
     
     exit
   fi
@@ -203,6 +226,21 @@ vhls_check_usage() {
     echo "  --force, -f"
     printf "    Force output even if files or directories already exist\n"
     echo
+    
+    # :flag.usage
+    echo "  --log-dir, -l LOG_DIR"
+    printf "    Log output directory\n"
+    echo
+    
+    # :flag.usage
+    echo "  --log-limit LOG_LIMIT"
+    printf "    Limit log output in bytes\n"
+    echo
+    
+    # :flag.usage
+    echo "  --progress"
+    printf "    Show progress\n"
+    echo
     # :command.usage_args
     printf "Arguments:\n"
     
@@ -234,6 +272,16 @@ output_summary() {
   fi
 }
 
+copy_log() {
+  if [[ $log_dir ]] ; then
+    if [[ $log_limit ]] ; then
+      head -c $log_limit "$1" > $log_dir/$(basename "$1")
+    else
+      cp "$1" $log_dir/$(basename "$1")
+    fi
+  fi
+}
+
 bold_nnl() { printf "\e[1m%b\e[0m" "$*"; }
 
 print_result() {
@@ -249,6 +297,12 @@ print_pass() {
 print_fail() {
   bold_nnl "$1"; shift
   red "$*"
+}
+
+print_progress() {
+  if [[ $progress ]] ; then
+    echo testing_$1
+  fi
 }
 
 check_bytes() {
@@ -421,6 +475,8 @@ get_sim_time() {
 ######################################
 
 check_csim() {
+  print_progress csim
+
   pushd $work_dir > /dev/null
 
   local csim_cxxflags="$cxxflags -I$source_dir"
@@ -475,6 +531,8 @@ EOS
   output_summary csim_runtime_error=$csim_runtime_error
   output_summary csim_error=$csim_error
   output_summary csim_mismatch=$csim_mismatch
+
+  copy_log csim.log
   
   if [ $csim_fail -ne 0 ] ; then
     print_fail "CSim: " $csim_result
@@ -492,6 +550,8 @@ EOS
 ######################################
 
 check_syn() {
+  print_progress syn
+
   pushd $work_dir > /dev/null
   
   local syn_fail=1
@@ -519,6 +579,8 @@ EOS
   
   output_summary syn_fail=$syn_fail
   output_summary syn_timeout=$syn_timeout_error
+
+  #copy_log syn.log
   
   if [ $syn_fail -ne 0 ] ; then
     print_fail "Syn: " $syn_result
@@ -536,6 +598,8 @@ EOS
 ######################################
 
 check_cosim() {
+  print_progress cosim
+
   pushd $work_dir > /dev/null
   
   local cosim_cxxflags="$cxxflags -I$source_dir"
@@ -579,6 +643,8 @@ EOS
   output_summary cosim_timeout=$cosim_timeout_error
   output_summary cosim_error=$cosim_error
   output_summary cosim_mismatch=$cosim_mismatch
+
+  #copy_log cosim.log
   
   if [ $cosim_fail -ne 0 ] ; then
     print_fail "CoSim: " $cosim_result
@@ -596,6 +662,8 @@ EOS
 ######################################
 
 check_hls() {
+  print_progress hls
+
   pushd $work_dir > /dev/null
   
   local hls_cxxflags="$cxxflags -I$source_dir"
@@ -640,6 +708,8 @@ EOS
   output_summary hls_fail=$hls_fail
   output_summary hls_timeout=$hls_timeout_error
   output_summary hls_error=$hls_error
+
+  copy_log hls.log
   
   if [ $hls_fail -ne 0 ] ; then
     print_fail "HLS: " $hls_result
@@ -724,6 +794,36 @@ parse_requirements() {
     # :flag.case
     --force | -f )
       args[--force]=1
+      shift
+      ;;
+  
+    # :flag.case
+    --log-dir | -l )
+      if [[ $2 ]]; then
+        args[--log-dir]="$2"
+        shift
+        shift
+      else
+        printf "%s\n" "--log-dir requires an argument: --log-dir, -l LOG_DIR"
+        exit 1
+      fi
+      ;;
+  
+    # :flag.case
+    --log-limit )
+      if [[ $2 ]]; then
+        args[--log-limit]="$2"
+        shift
+        shift
+      else
+        printf "%s\n" "--log-limit requires an argument: --log-limit LOG_LIMIT"
+        exit 1
+      fi
+      ;;
+  
+    # :flag.case
+    --progress )
+      args[--progress]=1
       shift
       ;;
   

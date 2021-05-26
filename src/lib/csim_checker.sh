@@ -3,6 +3,8 @@
 ######################################
 
 check_csim() {
+  print_progress csim
+
   pushd $work_dir > /dev/null
 
   local csim_cxxflags="$cxxflags -I$source_dir"
@@ -57,6 +59,8 @@ EOS
   output_summary csim_runtime_error=$csim_runtime_error
   output_summary csim_error=$csim_error
   output_summary csim_mismatch=$csim_mismatch
+
+  copy_log csim.log
   
   if [ $csim_fail -ne 0 ] ; then
     print_fail "CSim: " $csim_result

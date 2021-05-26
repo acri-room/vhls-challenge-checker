@@ -34,3 +34,15 @@ flags:
 - long: --force
   short: -f
   help: Force output even if files or directories already exist
+
+- long: --log-dir
+  short: -l
+  arg: log_dir
+  help: Log output directory
+
+- long: --log-limit
+  arg: log_limit
+  help: Limit log output in bytes
+
+- long: --progress
+  help: Show progress
