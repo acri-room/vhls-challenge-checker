@@ -496,7 +496,7 @@ set_top kernel
 open_solution -flow_target $flow solution
 set_part xcu200-fsgd2104-2-e
 create_clock -period ${target_clock_period_ns}ns -name default
-csim_design -O -ldflags "$ldflags"
+csim_design -ldflags "$ldflags"
 exit
 EOS
   
