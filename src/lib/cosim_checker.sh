@@ -49,7 +49,7 @@ EOS
   output_summary cosim_error=$cosim_error
   output_summary cosim_mismatch=$cosim_mismatch
 
-  #copy_log cosim.log
+  copy_log cosim.log
   
   if [ $cosim_fail -ne 0 ] ; then
     print_fail "CoSim: " $cosim_result
