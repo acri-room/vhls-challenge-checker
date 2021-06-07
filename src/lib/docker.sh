@@ -16,6 +16,9 @@ RUN apt-get update -y && apt-get install -y \
       build-essential \
       bzip2 \
       libc6-i386 \
+      libc6-dev-i386 \
+      gcc-multilib \
+      g++-multilib \
       git \
       libfontconfig1 \
       libglib2.0-0 \

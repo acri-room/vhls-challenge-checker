@@ -91,6 +91,7 @@ if [[ $docker ]] ; then
     -v $source_dir:/tmp/source:ro \
     --cpus=1 \
     --memory 4g \
+    --env LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
     $run_opts \
     $repo:$tag \
     /tmp/$self_base --force --output /tmp/output.txt --log-dir /tmp/log $cmd_opts /tmp/source
