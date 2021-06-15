@@ -32,7 +32,7 @@ EOS
   if [ $exit_code -eq 124 ] ; then
     hls_timeout_error=1
     hls_result="Timeout ($hls_timeout)"
-  elif grep -e "^ERROR:" $work_dir/vitis_hls.log > /dev/null ; then
+  elif grep --text -e "^ERROR:" $work_dir/vitis_hls.log > /dev/null ; then
     hls_error=1
     hls_result="HLS error, see log file: $work_dir/hls.log"
   elif [ $exit_code -ne 0 ] ; then

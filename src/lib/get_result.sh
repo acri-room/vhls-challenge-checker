@@ -57,8 +57,8 @@ EOS
 get_sim_time() {
   #sim_start=$(grep -e '^// RTL Simulation .* \[0\.00%\]' $work_dir/vitis_hls.log | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
   #sim_end=$(grep -e '^// RTL Simulation .* \[100\.00%\]' $work_dir/vitis_hls.log | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
-  local sim_start=$(grep -e '^// RTL Simulation .* @ "[0-9]*"' $work_dir/cosim.log | head -n 1 | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
-  local sim_end=$(grep -e '^// RTL Simulation .* @ "[0-9]*"' $work_dir/cosim.log | tail -n 1 | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
+  local sim_start=$(grep --text -e '^// RTL Simulation .* @ "[0-9]*"' $work_dir/cosim.log | head -n 1 | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
+  local sim_end=$(grep --text -e '^// RTL Simulation .* @ "[0-9]*"' $work_dir/cosim.log | tail -n 1 | awk -F @ '{print $2}' | sed 's/[^0-9]//g')
   
   local sim_time=$(echo "($sim_end-$sim_start)/1000" | bc)
   local sim_cycle=$(echo $sim_time/$target_clock_period_ns | bc)

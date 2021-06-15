@@ -30,10 +30,10 @@ EOS
   if [ $exit_code -eq 124 ] ; then
     cosim_timeout_error=1
     cosim_result="Timeout ($cosim_timeout)"
-  elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "nonzero return value" > /dev/null ; then
+  elif grep --text -e "^ERROR:" $work_dir/vitis_hls.log | grep "nonzero return value" > /dev/null ; then
     cosim_mismatch=1
     cosim_result="Mismatch"
-  elif grep -e "^ERROR:" $work_dir/vitis_hls.log > /dev/null ; then
+  elif grep --text -e "^ERROR:" $work_dir/vitis_hls.log > /dev/null ; then
     cosim_error=1
     cosim_result="Error, see log file: $work_dir/cosim.log"
   elif [ $exit_code -ne 0 ] ; then

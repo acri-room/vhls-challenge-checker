@@ -36,13 +36,13 @@ EOS
   if [ $exit_code -eq 124 ] ; then
     csim_timeout_error=1
     csim_result="Timeout ($csim_timeout)"
-  elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "compilation error" > /dev/null ; then
+  elif grep --text -e "^ERROR:" $work_dir/vitis_hls.log | grep "compilation error" > /dev/null ; then
     csim_compile_error=1
     csim_result="Compile error, see log file: $work_dir/csim.log"
-  elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "CSim failed with errors" > /dev/null ; then
+  elif grep --text -e "^ERROR:" $work_dir/vitis_hls.log | grep "CSim failed with errors" > /dev/null ; then
     csim_runtime_error=1
     csim_result="Runtime error, see log file: $work_dir/csim.log"
-  elif grep -e "^ERROR:" $work_dir/vitis_hls.log | grep "nonzero return value" > /dev/null ; then
+  elif grep --text -e "^ERROR:" $work_dir/vitis_hls.log | grep "nonzero return value" > /dev/null ; then
     csim_mismatch=1
     csim_result="Mismatch"
   elif [ $exit_code -ne 0 ] ; then
