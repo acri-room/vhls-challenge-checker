@@ -30,7 +30,7 @@ EOS
   
   set +e
   timeout $csim_timeout time vitis_hls -f csim.tcl |& tee csim.log > $logout
-  local exit_code=$?
+  local exit_code=${PIPESTATUS[0]}
   set -e
   
   if [ $exit_code -eq 124 ] ; then

@@ -19,7 +19,7 @@ EOS
   
   set +e
   timeout $syn_timeout time vitis_hls -f syn.tcl |& tee syn.log > $logout
-  exit_code=$?
+  exit_code=${PIPESTATUS[0]}
   set -e
   
   if [ $exit_code -eq 124 ] ; then

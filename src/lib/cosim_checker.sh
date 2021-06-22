@@ -24,7 +24,7 @@ EOS
 
   set +e
   timeout $cosim_timeout time vitis_hls -f cosim.tcl |& tee cosim.log > $logout
-  exit_code=$?
+  exit_code=${PIPESTATUS[0]}
   set -e
   
   if [ $exit_code -eq 124 ] ; then
