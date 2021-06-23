@@ -90,7 +90,7 @@ if [[ $docker ]] ; then
     -v $self:/tmp/$self_base:ro \
     -v $source_dir:/tmp/source:ro \
     --cpus=1 \
-    --memory 4g \
+    --memory 16g \
     --env LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
     $run_opts \
     $repo:$tag \
@@ -133,7 +133,7 @@ vitis_version=2020.2
 csim_timeout=1m
 hls_timeout=5m
 cosim_timeout=5m
-syn_timeout=10m
+syn_timeout=30m
 cxxflags=
 ldflags=
 
