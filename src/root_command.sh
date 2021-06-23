@@ -157,3 +157,6 @@ fi
 
 get_qor
 get_sim_time
+
+output_summary normal_exit=1
+
