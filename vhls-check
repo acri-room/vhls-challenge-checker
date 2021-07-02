@@ -395,6 +395,9 @@ RUN apt-get update -y && apt-get install -y \
       && apt autoclean -y \
       && apt autoremove -y \
       && rm -rf /var/lib/apt/lists/*
+
+# Locale
+RUN locale-gen en_US.UTF-8
 EOS
 
   docker build $* -f $dockerfile .
