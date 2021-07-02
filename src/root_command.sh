@@ -129,7 +129,7 @@ fi
 # Load regulation
 target_clock_period_ns=10
 flow=vitis
-vitis_version=2020.2
+vitis_version=2021.1
 csim_timeout=1m
 hls_timeout=5m
 cosim_timeout=5m

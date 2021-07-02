@@ -4,11 +4,17 @@
 get_qor() {
 
   if [[ $synthesis ]] ; then
+
+    local report_xml=$work_dir/prj_hls_cosim/solution/impl/report/verilog/kernel_export.xml
+    if [[ $vitis_version == "2021.1" ]] ; then
+      report_xml=$work_dir/prj_hls_cosim/solution/impl/report/verilog/export_syn.xml
+    fi
+
     # Get resource/timing estimation from synthesis report
     ruby << EOS >> $work_dir/qor.txt
 require 'rexml/document'
 
-doc = REXML::Document.new(File.new("$work_dir/prj_hls_cosim/solution/impl/report/verilog/kernel_export.xml"))
+doc = REXML::Document.new(File.new("$report_xml"))
 
 puts "ff=#{doc.elements['profile/AreaReport/Resources/FF'].text}"
 puts "lut=#{doc.elements['profile/AreaReport/Resources/LUT'].text}"
