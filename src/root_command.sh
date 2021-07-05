@@ -141,6 +141,14 @@ source $regulation
 
 # Tool setup
 source /tools/Xilinx/Vitis/$vitis_version/settings64.sh
+# AR# 69355
+if [[ -e /usr/lib/x86_64-linux-gnu ]] ; then
+  if [[ -z ${LIBRARY_PATH+x} ]] ; then
+    export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu
+  else
+    export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LIBRARY_PATH
+  fi
+fi
 
 # Create working directory
 mkdir -p $work_dir
