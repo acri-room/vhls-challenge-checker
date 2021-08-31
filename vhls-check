@@ -636,7 +636,7 @@ check_cosim() {
 open_project prj_hls_cosim
 add_files -cflags "$cosim_cxxflags -DCOSIM" -tb $tb
 open_solution -flow_target $flow solution
-cosim_design -ldflags "$ldflags" -random_stall
+cosim_design -ldflags "$ldflags"
 exit
 EOS
 
