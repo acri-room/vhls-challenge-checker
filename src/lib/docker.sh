@@ -40,6 +40,7 @@ RUN apt-get update -y && apt-get install -y \
       python-pip \
       bc \
       time \
+      libboost-dev \
       && apt autoclean -y \
       && apt autoremove -y \
       && rm -rf /var/lib/apt/lists/*
